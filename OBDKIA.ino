@@ -50,13 +50,16 @@ String  raw_ELM327_response = ""; //to save OBD's response after sending command
 byte    inData;                   //to parse data received from OBD
 char    inChar;                   //to read OBD's response char-wise
 String  WorkingString="";         //to cut substrings from raw_ELM327_response
+String  cod="";                   //to save DTC
 long    A;                        //to save numeric data gotten from control unit's responses
 long    B;
 //long    C;
 
 float   temp;              
 float   rpm;               
-float   veloc;             
+float   veloc;     
+float   ndtc1;
+float   ndtc2;
 
 
 /*****************************************
@@ -131,24 +134,118 @@ void setup() {
   BTOBD_serial.println("at dpn");       //Describe Protocol Number
   delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
   
-  BTOBD_serial.println("01");           //Request Mode 01 (Number of DTCs)
+  BTOBD_serial.println("09 02");           //Request Vehicle Information
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);  //Obtain VIN number substring and hex to cha
+  
+  BTOBD_serial.println("01 01");           //Request Mode 01 (Number of DTCs)
   delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
   //if non zero, request DTCs
+  WorkingString = raw_ELM327_response.substring(11,13);              //Cut Byte with DTC number
+  ndtc1 = strtol(WorkingString.c_str(),NULL,16);                     //Convert to integer
+  ndtc2 = ndtc1-128;                                                 //Number of DTCs
+  Serial.print("Number of DTC's: ");Serial.println(ndtc2);
   
-  BTOBD_serial.println("03");           //Request Mode 03 (List of DTCs)
+  if(0 != ndtc2){
+    BTOBD_serial.println("03");                                      //Request Mode 03 (List of DTCs)
+    delay(500); read_elm327_response(); Serial.println(raw_ELM327_response); //Increase delay?
+    for(int j = 8; j <= (ndtc2*6+6); j = j+6){                     //First hex digit
+      WorkingString = raw_ELM327_response.substring((j+1),(j+4));              //Cut Byte with DTC  
+      if(j == 0){
+          String fdig = "PO";        
+        }
+        else if(j == 1){
+          String fdig = "P1";
+        }
+        else if(j == 2){
+          String fdig = "P2";
+        }
+        else if(j == 3){
+          String fdig = "P3";
+        }
+        else if(j == 4){
+          String fdig = "C0";
+        }
+        else if(j == 5){
+          String fdig = "C1";
+        }
+        else if(j == 6){
+          String fdig = "C2";
+        }
+        else if(j == 7){
+          String fdig = "C3";
+        }
+        else if(j == 8){
+          String fdig = "B0";
+        }
+        else if(j == 9){
+          String fdig = "B1";
+        }
+        else if(j == A){          //A STRING??
+          String fdig = "B2";
+        }
+        else if(j == B){
+          String fdig = "B3";
+        }
+        else if(j == C){
+          String fdig = "UO";
+        }
+        else if(j == D){
+          String fdig = "U1";
+        }
+        else if(j == E){
+          String fdig = "U2";
+        }
+        else if(j == F){
+          String fdig = "U3";
+        }
+    cod = fdig + WorkingString;
+    int i = (j-2)/6;
+    Serial.print("DTC n°");Serial.print(i);Serial.print(" :");Serial.println(cod);
+    }
+  }
+  
+  BTOBD_serial.println("01 00");        //Receive Mode-01 Available Sensors (PIDs 0 - 20) 
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+    
+  BTOBD_serial.println("01 20");        //Receive Mode-01 Available Sensors (PIDs 20 - 40)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response); 
+  
+  BTOBD_serial.println("01 40");        //Receive Mode-01 Available Sensors (PIDs 40 - 60)
   delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
   
-  BTOBD_serial.println("01 00");        //Receive Mode-01 Available Sensors
+  BTOBD_serial.println("01 60");        //Receive Mode-01 Available Sensors (PIDs 60 - 80)
   delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
-  
-  BTOBD_serial.println("01 05");        //Request PID 05 (Coolant Temperature)
-  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
-  
+
   BTOBD_serial.println("01 0C");        //Request PID 0C (Engine RPM)
   delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
   
   BTOBD_serial.println("01 0D");        //Request PID 0D (Vehicle Speed)
   delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
+  BTOBD_serial.println("01 63");        //Request PID 63 (Engine reference torque)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
+  BTOBD_serial.println("01 33");        //Request PID 33 (Baromtric pressure)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
+  BTOBD_serial.println("01 5E");        //Request PID 5E (Fuel rate)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
+  BTOBD_serial.println("01 1F");        //Request PID 1F (Run time since engine start)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
+  BTOBD_serial.println("01 5C");        //Request PID 5C (Engine oil temperature)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
+  BTOBD_serial.println("01 05");        //Request PID 05 (Coolant Temperature)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+    
+  BTOBD_serial.println("01 46");        //Request PID 46 (Ambient Temperature)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+    
+  BTOBD_serial.println("01 5B");        //Request PID 5B (Hybrid battery pack remaining life)
+  delay(500); read_elm327_response(); Serial.println(raw_ELM327_response);
+  
   
 }
 
